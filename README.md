@@ -5,7 +5,7 @@
 ### **Usage:**
 
 ```bash
-./GoConnect -d <local_directory> -d <remote@server:remote_directory> -p <port>
+./GoConnect -d <local_directory> -s <remote@server:remote_directory> -p <port>
 ```
 
 
