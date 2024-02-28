@@ -156,11 +156,11 @@ func Initailize(port string) {
 }
 
 
-func Connect(source string,   port uint , destination [3]string) {
-	ip_ssh = destination[1]
-	user_ssh = destination[0]
-	workdir_target = destination[2]
-	workdir_client = source
+func Connect(destination string,   port uint , sources [3]string) {
+	ip_ssh = sources[1]
+	user_ssh = sources[0]
+	workdir_target = sources[2]
+	workdir_client = destination
 	// print all variable
 	fmt.Println(ip_ssh)
 	fmt.Println(user_ssh)
