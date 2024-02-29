@@ -7,29 +7,44 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"os/user"
+	"path/filepath"
 	"runtime"
-	"strconv"
 	"strings"
+
 	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
 )
 
 var (
-	privateKeyPath string = "/home/morteza/.ssh/id_rsa"
+	privateKeyPath string
 	Password       string
 	ip_ssh         string
 	user_ssh       string
 	workdir_client string
 	workdir_target string
 	client         *ssh.Client
-	err			error
+	err            error
 	// protect the password and save it in a file
 )
 
-// TODO
-// func directoryPath() {
-// 	// fix the directory Path
-// }
+func PathFixer(path string) (string, error) {
+	// fix the directory Path
+	if !strings.HasPrefix(path, "~") {
+		return path, nil
+	} else if strings.HasPrefix(path, ".") {
+		// TODO : test this part
+		return filepath.Abs(path)
+	}
+
+	usr, err := user.Current()
+	if err != nil {
+		return "", err
+	}
+
+	// Replace ~ with the user's home directory
+	return filepath.Join(usr.HomeDir, path[1:]), nil
+}
 
 func loger() {
 	_, _, line, _ := runtime.Caller(1)
@@ -49,7 +64,7 @@ func Check_method_connect() *ssh.ClientConfig {
 		config := &ssh.ClientConfig{
 			User: user_ssh,
 			Auth: []ssh.AuthMethod{
-				ssh.Password("123"),
+				ssh.Password(Password),
 			},
 			HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 		}
@@ -67,17 +82,15 @@ func Check_method_connect() *ssh.ClientConfig {
 	return nil
 }
 
-
 func Chech_hash(file_client, file_target string) bool {
 	// check the hash of the file
 	// from server check the hash of the file
 	md5_target := Run_Command("md5sum " + workdir_target + "/" + file_target)
-	md5_client, _ := exec.Command("md5sum", workdir_client+ "/" +file_client).Output()
+	md5_client, _ := exec.Command("md5sum", workdir_client+"/"+file_client).Output()
 	return strings.Split(string(md5_client), " ")[0] == strings.Split(string(md5_target), " ")[0]
 }
 
 func GetFile(fileName_target string) {
-
 	list_Dir, _ := os.ReadDir(".")
 	for _, Name_of_File := range list_Dir {
 		if Name_of_File.Name() == fileName_target && !Name_of_File.IsDir() && Chech_hash(Name_of_File.Name(), fileName_target) {
@@ -89,7 +102,6 @@ func GetFile(fileName_target string) {
 	fmt.Println("The file is not exist: \nfile name : \n" + fileName_target)
 	fmt.Printf("Downloading ....\n")
 	sftpDownloader(fileName_target)
-
 }
 
 func sftpDownloader(fileName_target string) bool {
@@ -115,7 +127,7 @@ func sftpDownloader(fileName_target string) bool {
 		}
 		localfile.Close()
 	} else {
-		localfile, _ := os.OpenFile(fileName_target , os.O_RDWR | os.O_CREATE | os.O_TRUNC , 0777)
+		localfile, _ := os.OpenFile(fileName_target, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0777)
 		_, err = io.Copy(localfile, openT)
 		if err != nil {
 			log.Println(err)
@@ -145,18 +157,23 @@ func Run_Command(command string) (resault string) {
 	return b.String()
 }
 
-func Initailize(port string) {
+func Initailize(addr string) {
+	loger()
+	privateKeyPath, err = PathFixer("~" + "/.ssh/id_rsa")
 	config := Check_method_connect()
-	fmt.Println(ip_ssh)
-	client, err = ssh.Dial("tcp", ip_ssh + ":" + port, config)
+	fmt.Println(addr)
+	client, err = ssh.Dial("tcp", addr, config)
 	// defer client.Close()
 	loger()
+	if err != nil {
+		log.Println(err)
+	}
+
 	os.Chdir(workdir_client)
 
 }
 
-
-func Connect(destination string,   port uint , sources [3]string) {
+func Connect(destination string, port string, sources [3]string) {
 	ip_ssh = sources[1]
 	user_ssh = sources[0]
 	workdir_target = sources[2]
@@ -166,8 +183,7 @@ func Connect(destination string,   port uint , sources [3]string) {
 	fmt.Println(user_ssh)
 	fmt.Println(workdir_target)
 	fmt.Println(workdir_client)
-	
-	Initailize(strconv.Itoa(int(port)))
+	Initailize(ip_ssh + ":" + port)
 
 	list := strings.Split((Run_Command("cd " + workdir_target + " && ls -A")), "\n")
 	for _, res := range list {
@@ -177,4 +193,6 @@ func Connect(destination string,   port uint , sources [3]string) {
 		loger()
 		GetFile(res)
 	}
+	defer client.Close()
+	fmt.Println("Finished")
 }
