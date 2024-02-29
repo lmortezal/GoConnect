@@ -7,7 +7,10 @@
 ```bash
 ./GoConnect -d <local_directory> -s <remote@server:remote_directory> -p <port>
 ```
-
+**FOR EXAMPLE:**
+```bash
+./GoConnect -d /home/user/Downloads -s user@0.0.0.0:/home/user/Target -p 22
+```
 
 #### ***TODO:***
 - [x] Add support for multiple file transfers
