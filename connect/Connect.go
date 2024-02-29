@@ -11,14 +11,13 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-
 	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
+	"golang.org/x/term"
 )
 
 var (
 	privateKeyPath string
-	Password       string
 	ip_ssh         string
 	user_ssh       string
 	workdir_client string
@@ -27,6 +26,17 @@ var (
 	err            error
 	// protect the password and save it in a file
 )
+
+func GivePassword() string {
+	LABLE:
+	fmt.Println("Enter your password: ")
+	password , err := term.ReadPassword(0)
+	if err != nil {
+		log.Println(err)
+		goto LABLE
+	}
+	return string(password)
+}
 
 func PathFixer(path string) (string, error) {
 	// fix the directory Path
@@ -60,7 +70,8 @@ func Check_method_connect() *ssh.ClientConfig {
 	if err != nil {
 		log.Println(err)
 	}
-	if privateKeyPath == "" {
+	if singer == nil {
+		Password := GivePassword()
 		config := &ssh.ClientConfig{
 			User: user_ssh,
 			Auth: []ssh.AuthMethod{
@@ -69,17 +80,16 @@ func Check_method_connect() *ssh.ClientConfig {
 			HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 		}
 		return config
-	} else if Password == "" {
-		config := &ssh.ClientConfig{
-			User: user_ssh,
-			Auth: []ssh.AuthMethod{
-				ssh.PublicKeys(singer),
-			},
-			HostKeyCallback: ssh.InsecureIgnoreHostKey(), // Only use this if you're sure about the server's identity
-		}
-		return config
 	}
-	return nil
+	config := &ssh.ClientConfig{
+		User: user_ssh,
+		Auth: []ssh.AuthMethod{
+			ssh.PublicKeys(singer),
+		},
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(), // Only use this if you're sure about the server's identity
+	}
+	return config
+
 }
 
 func Chech_hash(file_client, file_target string) bool {
@@ -159,7 +169,7 @@ func Run_Command(command string) (resault string) {
 
 func Initailize(addr string) {
 	loger()
-	privateKeyPath, err = PathFixer("~" + "/.ssh/id_rsa")
+	privateKeyPath, err = PathFixer("~" + "/.ssh/id_rsa2")
 	config := Check_method_connect()
 	fmt.Println(addr)
 	client, err = ssh.Dial("tcp", addr, config)
