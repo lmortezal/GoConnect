@@ -111,10 +111,11 @@ func Chech_hash(file_client, file_target string) bool {
 	// check the hash of the file
 	// from server check the hash of the file
 	md5_target := Run_Command("md5sum " + workdir_target + "/" + file_target)
+	
 	md5_client, err := exec.Command("md5sum" , workdir_client +"/" + file_client).Output()
 	if err != nil {
-		log.Println(err)
-		loger()
+		fmt.Printf("Use the built-in function to calculate the hash of the file -- %v\n" , err)
+		Md5sum(workdir_client + "/" + file_client)
 	}
 	return strings.Split(string(md5_client), " ")[0] == strings.Split(string(md5_target), " ")[0]
 }
@@ -123,7 +124,7 @@ func GetFile(fileName_target string) {
 	list_Dir, _ := os.ReadDir(".")
 	for _, Name_of_File := range list_Dir {
 		if Name_of_File.Name() == fileName_target && !Name_of_File.IsDir() && Chech_hash(Name_of_File.Name(), fileName_target) {
-			fmt.Println("The file is already exist and same as in server \nfile name : \n" + Name_of_File.Name())
+			fmt.Println("The file is already exist same as the server: ", fileName_target)
 			return
 		}
 	}
