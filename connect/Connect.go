@@ -17,7 +17,6 @@ import (
 )
 
 var (
-	privateKeyPath string
 	ip_ssh         string
 	user_ssh       string
 	workdir_client string
@@ -28,12 +27,15 @@ var (
 )
 
 func GivePassword() string {
-	LABLE:
+	GETPASSAGAIN:
 	fmt.Println("Enter your password: ")
-	password , err := term.ReadPassword(0)
+	password, err := term.ReadPassword(0)
 	if err != nil {
-		log.Println(err)
-		goto LABLE
+		fmt.Printf("Error to read password\nError:  %v\n", err)
+		goto GETPASSAGAIN
+	} else if len(password) == 0 {
+		fmt.Printf("Password can not be empty\n")
+		goto GETPASSAGAIN
 	}
 	return string(password)
 }
@@ -61,14 +63,27 @@ func loger() {
 	log.Printf("--%v--\n", line)
 }
 
+func GetPrivateKey() string {
+	var keyArray []string = []string{"id_rsa", "id_ecdsa", "id_ecdsa_sk", "id_ed25519", "id_ed25519_sk", "id_dsa", "id_xmss"}
+	for _, key := range keyArray {
+		FullAddress, _ := PathFixer("~/.ssh/" + key)
+		if _, err := os.ReadFile(FullAddress); err == nil {
+			fmt.Printf("Use the key : %v\n", key)
+			return "~/.ssh/" + key
+		}
+	}
+	return ""
+}
+
 func Check_method_connect() *ssh.ClientConfig {
-	key, err := os.ReadFile(privateKeyPath)
+	Paddress, _ := PathFixer(GetPrivateKey())
+	key, err := os.ReadFile(Paddress)
 	if err != nil {
-		log.Println(err)
+		log.Printf("Failed to read file: %v", err)
 	}
 	singer, err := ssh.ParsePrivateKey(key)
 	if err != nil {
-		log.Println(err)
+		log.Printf("Failed to parse private key: %v", err)
 	}
 	if singer == nil {
 		Password := GivePassword()
@@ -96,7 +111,11 @@ func Chech_hash(file_client, file_target string) bool {
 	// check the hash of the file
 	// from server check the hash of the file
 	md5_target := Run_Command("md5sum " + workdir_target + "/" + file_target)
-	md5_client, _ := exec.Command("md5sum", workdir_client+"/"+file_client).Output()
+	md5_client, err := exec.Command("md5sum" , workdir_client +"/" + file_client).Output()
+	if err != nil {
+		log.Println(err)
+		loger()
+	}
 	return strings.Split(string(md5_client), " ")[0] == strings.Split(string(md5_target), " ")[0]
 }
 
@@ -109,7 +128,7 @@ func GetFile(fileName_target string) {
 		}
 	}
 
-	fmt.Println("The file is not exist: \nfile name : \n" + fileName_target)
+	fmt.Printf("The file is not exist in your machine : %v\n", fileName_target)
 	fmt.Printf("Downloading ....\n")
 	sftpDownloader(fileName_target)
 }
@@ -151,12 +170,10 @@ func sftpDownloader(fileName_target string) bool {
 
 func Run_Command(command string) (resault string) {
 	//first connect to the server and get the hash of the file
-	fmt.Println("command : " + command)
 	session_Scope, err := client.NewSession()
 	if err != nil {
 		log.Println("Failed to dial: ", err)
 	}
-	loger()
 	defer session_Scope.Close()
 	var b bytes.Buffer
 	session_Scope.Stdout = &b
@@ -168,17 +185,14 @@ func Run_Command(command string) (resault string) {
 }
 
 func Initailize(addr string) {
-	loger()
-	privateKeyPath, err = PathFixer("~" + "/.ssh/id_rsa2")
+	GETPASS:
 	config := Check_method_connect()
-	fmt.Println(addr)
 	client, err = ssh.Dial("tcp", addr, config)
 	// defer client.Close()
-	loger()
 	if err != nil {
 		log.Println(err)
+		goto GETPASS
 	}
-
 	os.Chdir(workdir_client)
 
 }
@@ -189,10 +203,6 @@ func Connect(destination string, port string, sources [3]string) {
 	workdir_target = sources[2]
 	workdir_client = destination
 	// print all variable
-	fmt.Println(ip_ssh)
-	fmt.Println(user_ssh)
-	fmt.Println(workdir_target)
-	fmt.Println(workdir_client)
 	Initailize(ip_ssh + ":" + port)
 
 	list := strings.Split((Run_Command("cd " + workdir_target + " && ls -A")), "\n")
@@ -200,7 +210,6 @@ func Connect(destination string, port string, sources [3]string) {
 		if res == "" {
 			continue
 		}
-		loger()
 		GetFile(res)
 	}
 	defer client.Close()
