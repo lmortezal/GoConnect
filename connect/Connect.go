@@ -42,11 +42,11 @@ func GivePassword() string {
 
 func PathFixer(path string) (string, error) {
 	// fix the directory Path
-	if !strings.HasPrefix(path, "~") {
-		return path, nil
-	} else if strings.HasPrefix(path, ".") {
-		// TODO : test this part
+	if strings.HasPrefix(path, ".") {
 		return filepath.Abs(path)
+	} else if !strings.HasPrefix(path, "~") {
+		return path, nil
+		// TODO : test this part
 	}
 
 	usr, err := user.Current()
