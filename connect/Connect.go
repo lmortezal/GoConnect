@@ -75,37 +75,6 @@ func GetPrivateKey() string {
 	return ""
 }
 
-func Check_method_connect() *ssh.ClientConfig {
-	Paddress, _ := PathFixer(GetPrivateKey())
-	key, err := os.ReadFile(Paddress)
-	if err != nil {
-		log.Printf("Failed to read file: %v", err)
-	}
-	singer, err := ssh.ParsePrivateKey(key)
-	if err != nil {
-		log.Printf("Failed to parse private key: %v", err)
-	}
-	if singer == nil {
-		Password := GivePassword()
-		config := &ssh.ClientConfig{
-			User: user_ssh,
-			Auth: []ssh.AuthMethod{
-				ssh.Password(Password),
-			},
-			HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-		}
-		return config
-	}
-	config := &ssh.ClientConfig{
-		User: user_ssh,
-		Auth: []ssh.AuthMethod{
-			ssh.PublicKeys(singer),
-		},
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(), // Only use this if you're sure about the server's identity
-	}
-	return config
-
-}
 
 func Chech_hash(file_client, file_target string) bool {
 	// check the hash of the file
@@ -129,7 +98,7 @@ func GetFile(fileName_target string) {
 			return
 		}
 	}
-
+	
 	fmt.Printf("The file is not exist in your machine : %v\n", fileName_target)
 	fmt.Printf("Downloading ....\n")
 	sftpDownloader(fileName_target)
@@ -157,17 +126,17 @@ func sftpDownloader(fileName_target string) bool {
 			return false
 		}
 		localfile.Close()
-	} else {
-		localfile, _ := os.OpenFile(fileName_target, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0777)
-		_, err = io.Copy(localfile, openT)
-		if err != nil {
-			log.Println(err)
-			return false
+		} else {
+			localfile, _ := os.OpenFile(fileName_target, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0777)
+			_, err = io.Copy(localfile, openT)
+			if err != nil {
+				log.Println(err)
+				return false
+			}
+			localfile.Close()
 		}
-		localfile.Close()
-	}
-	defer openT.Close()
-	return true
+		defer openT.Close()
+		return true
 }
 
 func Run_Command(command string) (resault string) {
@@ -181,18 +150,52 @@ func Run_Command(command string) (resault string) {
 	session_Scope.Stdout = &b
 	if err := session_Scope.Run(command); err != nil {
 		log.Println("Failed to dial: ", err)
-
+		
 	}
 	return b.String()
 }
 
+func Check_method_connect(Pkey *bool) *ssh.ClientConfig {
+	// TODO : fix authentication check
+	Paddress, _ := PathFixer(GetPrivateKey())
+	key, err := os.ReadFile(Paddress)
+	if err != nil {
+		log.Printf("Failed to read file: %v", err)
+	}
+	singer, err := ssh.ParsePrivateKey(key)
+	if err != nil {
+		log.Printf("Failed to parse private key: %v", err)
+	}
+	if singer == nil || !*Pkey {
+		Password := GivePassword()
+		config := &ssh.ClientConfig{
+			User: user_ssh,
+			Auth: []ssh.AuthMethod{
+				ssh.Password(Password),
+			},
+			HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		}
+		return config
+	}
+	config := &ssh.ClientConfig{
+		User: user_ssh,
+		Auth: []ssh.AuthMethod{
+			ssh.PublicKeys(singer),
+		},
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(), // Only use this if you're sure about the server's identity
+	}
+	return config
+}
+
 func Initailize(addr string) {
+	var Pkey bool = true
 	GETPASS:
-	config := Check_method_connect()
+	config := Check_method_connect(&Pkey)
 	client, err = ssh.Dial("tcp", addr, config)
 	// defer client.Close()
 	if err != nil {
 		log.Println(err)
+		Pkey = false
 		goto GETPASS
 	}
 	os.Chdir(workdir_client)
