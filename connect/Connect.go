@@ -111,13 +111,14 @@ func Chech_hash(file_client, file_target string) bool {
 	// check the hash of the file
 	// from server check the hash of the file
 	md5_target := Run_Command("md5sum " + workdir_target + "/" + file_target)
-	
-	md5_client, err := exec.Command("md5sum" , workdir_client +"/" + file_client).Output()
-	if err != nil {
-		fmt.Printf("Use the built-in function to calculate the hash of the file -- %v\n" , err)
-		Md5sum(workdir_client + "/" + file_client)
+	md5_target = strings.Split(string(md5_target), " ")[0]
+
+	md5_client_, err := exec.Command("md5sum" , filepath.Join(workdir_client +"/"+ file_client)).Output()
+	md5_client := strings.Split(string(md5_client_), " ")[0]
+	if runtime.GOOS == "windows" && err != nil {
+		md5_client = Md5sum(filepath.Join(workdir_client +"/"+ file_client))
 	}
-	return strings.Split(string(md5_client), " ")[0] == strings.Split(string(md5_target), " ")[0]
+	return md5_target == md5_client
 }
 
 func GetFile(fileName_target string) {
