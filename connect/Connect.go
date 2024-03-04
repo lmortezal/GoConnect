@@ -26,6 +26,7 @@ var (
 	// protect the password and save it in a file
 )
 
+// Get the password from the user
 func GivePassword() string {
 	GETPASSAGAIN:
 	fmt.Println("Enter your password: ")
@@ -40,6 +41,7 @@ func GivePassword() string {
 	return string(password)
 }
 
+// check the path 
 func PathFixer(path string) (string, error) {
 	// fix the directory Path
 	if strings.HasPrefix(path, ".") {
@@ -58,11 +60,13 @@ func PathFixer(path string) (string, error) {
 	return filepath.Join(usr.HomeDir, path[1:]), nil
 }
 
+// print the line of the code
 func loger() {
 	_, _, line, _ := runtime.Caller(1)
 	log.Printf("--%v--\n", line)
 }
 
+// Get the private key from the ssh directory
 func GetPrivateKey() string {
 	var keyArray []string = []string{"id_rsa", "id_ecdsa", "id_ecdsa_sk", "id_ed25519", "id_ed25519_sk", "id_dsa", "id_xmss"}
 	for _, key := range keyArray {
@@ -75,7 +79,7 @@ func GetPrivateKey() string {
 	return ""
 }
 
-
+// Get the hash of the file
 func Chech_hash(file_client, file_target string) bool {
 	// check the hash of the file
 	// from server check the hash of the file
@@ -83,13 +87,18 @@ func Chech_hash(file_client, file_target string) bool {
 	md5_target = strings.Split(string(md5_target), " ")[0]
 
 	md5_client_, err := exec.Command("md5sum" , filepath.Join(workdir_client +"/"+ file_client)).Output()
-	md5_client := strings.Split(string(md5_client_), " ")[0]
-	if runtime.GOOS == "windows" && err != nil {
+	md5_client := strings.Split(string(md5_client_), " ")[0][1:]
+	
+	fmt.Println("---md5_client: ", md5_client)
+	if runtime.GOOS == "windows" || err != nil {
 		md5_client = Md5sum(filepath.Join(workdir_client +"/"+ file_client))
+		fmt.Println("windows md5_client: ", md5_client)
 	}
 	return md5_target == md5_client
 }
 
+
+// Get the file from the server with Check_hash
 func GetFile(fileName_target string) {
 	list_Dir, _ := os.ReadDir(".")
 	for _, Name_of_File := range list_Dir {
@@ -104,6 +113,7 @@ func GetFile(fileName_target string) {
 	sftpDownloader(fileName_target)
 }
 
+// Download the file from the server
 func sftpDownloader(fileName_target string) bool {
 	// download the file from the server
 	sftpSession, err := sftp.NewClient(client)
@@ -117,6 +127,17 @@ func sftpDownloader(fileName_target string) bool {
 		log.Println(err)
 	}
 	defer openT.Close()
+	
+	// if filename is directory
+	fileStat , err:= openT.Stat()
+	if err != nil {
+		log.Println(err)
+		loger()
+	}
+	if fileStat.IsDir(){
+		return false
+	}
+	
 	_, err = os.Stat(fileName_target)
 	if os.IsNotExist(err) {
 		localfile, _ := os.Create(fileName_target)
@@ -139,6 +160,7 @@ func sftpDownloader(fileName_target string) bool {
 		return true
 }
 
+// Run the command on the server
 func Run_Command(command string) (resault string) {
 	//first connect to the server and get the hash of the file
 	session_Scope, err := client.NewSession()
@@ -155,6 +177,7 @@ func Run_Command(command string) (resault string) {
 	return b.String()
 }
 
+// Check the authentication method and return the config
 func Check_method_connect(Pkey *bool) *ssh.ClientConfig {
 	// TODO : fix authentication check
 	Paddress, _ := PathFixer(GetPrivateKey())
@@ -187,6 +210,7 @@ func Check_method_connect(Pkey *bool) *ssh.ClientConfig {
 	return config
 }
 
+// Initialize the connection and try to connect to the server
 func Initailize(addr string) {
 	var Pkey bool = true
 	GETPASS:
@@ -202,6 +226,8 @@ func Initailize(addr string) {
 
 }
 
+
+// Start GoConnect from here
 func Connect(destination string, port string, sources [3]string) {
 	ip_ssh = sources[1]
 	user_ssh = sources[0]
