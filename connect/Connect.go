@@ -6,7 +6,6 @@ import (
 	"io"
 	"log"
 	"os"
-	"os/exec"
 	"os/user"
 	"path/filepath"
 	"runtime"
@@ -86,14 +85,10 @@ func Chech_hash(file_client, file_target string) bool {
 	md5_target := Run_Command("md5sum " + workdir_target + "/" + file_target)
 	md5_target = strings.Split(string(md5_target), " ")[0]
 
-	md5_client_, err := exec.Command("md5sum" , filepath.Join(workdir_client +"/"+ file_client)).Output()
-	md5_client := strings.Split(string(md5_client_), " ")[0][1:]
-	
-	fmt.Println("---md5_client: ", md5_client)
-	if runtime.GOOS == "windows" || err != nil {
-		md5_client = Md5sum(filepath.Join(workdir_client +"/"+ file_client))
-		fmt.Println("windows md5_client: ", md5_client)
-	}
+	// md5_client_, err := exec.Command("md5sum" , filepath.Join(workdir_client +"/"+ file_client)).Output()
+	// md5_client := strings.Split(string(md5_client_), " ")[0][1:]
+
+	md5_client := Md5sum(filepath.Join(workdir_client +"/"+ file_client))
 	return md5_target == md5_client
 }
 
@@ -107,14 +102,11 @@ func GetFile(fileName_target string) {
 			return
 		}
 	}
-	
-	fmt.Printf("The file is not exist in your machine : %v\n", fileName_target)
-	fmt.Printf("Downloading ....\n")
 	sftpDownloader(fileName_target)
 }
 
 // Download the file from the server
-func sftpDownloader(fileName_target string) bool {
+func sftpDownloader(fileName_target string)  {
 	// download the file from the server
 	sftpSession, err := sftp.NewClient(client)
 	if err != nil {
@@ -135,16 +127,17 @@ func sftpDownloader(fileName_target string) bool {
 		loger()
 	}
 	if fileStat.IsDir(){
-		return false
+		return 
 	}
 	
+	fmt.Printf("The file is not exist in your machine : %v\nDownloading ...", fileName_target)
 	_, err = os.Stat(fileName_target)
 	if os.IsNotExist(err) {
 		localfile, _ := os.Create(fileName_target)
 		_, err = io.Copy(localfile, openT)
 		if err != nil {
 			log.Println(err)
-			return false
+			return 
 		}
 		localfile.Close()
 		} else {
@@ -152,12 +145,12 @@ func sftpDownloader(fileName_target string) bool {
 			_, err = io.Copy(localfile, openT)
 			if err != nil {
 				log.Println(err)
-				return false
+				return 
 			}
 			localfile.Close()
 		}
 		defer openT.Close()
-		return true
+		return 
 }
 
 // Run the command on the server
