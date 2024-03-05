@@ -116,7 +116,6 @@ func GetFile(fullPath,workdir_target string) {
 	}
 	sftpDownloader(fullPath , strings.Replace(fullPath , workdir_target , "", 1))
 }
-
 // Download the file from the server
 func sftpDownloader(fullPath_target,Path_target string)  {
 	// download the file from the server
@@ -188,7 +187,6 @@ func lsFiles(workdir string) (files []string){
 // Run the command on the server
 func Run_Command(command string) (resault string) {
 	//first connect to the server and get the hash of the file
-	
 	session_Scope, err := client.NewSession()
 	if err != nil {
 		log.Println("Failed to dial: ", err)

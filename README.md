@@ -14,6 +14,6 @@
 
 #### ***TODO:***
 - [x] Add support for multiple file transfers
+- [x] Add recursive file transfer with directory support
 - [ ] Add support for file uploads
-- [ ] Add recursive file transfer with directory support
 - [ ] Synchonize real-time file changes

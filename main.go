@@ -5,7 +5,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-
 	"github.com/lmortezal/GoConnect/connect"
 )
 
