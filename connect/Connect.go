@@ -20,7 +20,6 @@ var (
 	ip_ssh         string
 	user_ssh       string
 	workdir_client string
-	workdir_target string
 	client         *ssh.Client
 	err            error
 	// protect the password and save it in a file
@@ -80,10 +79,10 @@ func GetPrivateKey() string {
 }
 
 // Get the hash of the file
-func Chech_hash(file_client, file_target string) bool {
+func Chech_hash(file_client, fullPath_target string) bool {
 	// check the hash of the file
 	// from server check the hash of the file
-	md5_target := Run_Command("md5sum " + workdir_target + "/" + file_target)
+	md5_target := Run_Command("md5sum " + fullPath_target)
 	md5_target = strings.Split(string(md5_target), " ")[0]
 
 	// md5_client_, err := exec.Command("md5sum" , filepath.Join(workdir_client +"/"+ file_client)).Output()
@@ -95,28 +94,31 @@ func Chech_hash(file_client, file_target string) bool {
 
 
 // Get the file from the server with Check_hash
-func GetFile(fileName_target string) {
+func GetFile(fullPath string) {
+	var fileNameTarget string = strings.Split(fullPath , "/")[len(strings.Split(fullPath , "/")) - 1:][0]
+
 	list_Dir, _ := os.ReadDir(".")
 	for _, Name_of_File := range list_Dir {
-		if Name_of_File.Name() == fileName_target && !Name_of_File.IsDir() && Chech_hash(Name_of_File.Name(), fileName_target) {
+		if Name_of_File.Name() == fileNameTarget && !Name_of_File.IsDir() && Chech_hash(Name_of_File.Name(), fullPath) {
 			fileStat , _ := Name_of_File.Info()
 			fmt.Printf("%v already exists on the server.\nsize: %v\n",Name_of_File.Name(),  humanize.Bytes(uint64(fileStat.Size())))
 			return
 		}
 	}
-	sftpDownloader(fileName_target)
+	sftpDownloader(fullPath)
 }
 
 // Download the file from the server
-func sftpDownloader(fileName_target string)  {
+func sftpDownloader(fullPath_target string)  {
 	// download the file from the server
+	var fileNameTarget string = strings.Split(fullPath_target , "/")[len(strings.Split(fullPath_target , "/")) - 1:][0]
 	sftpSession, err := sftp.NewClient(client)
 	if err != nil {
 		log.Println(err)
 	}
 	defer sftpSession.Close()
 	var openT *sftp.File
-	openT, err = sftpSession.Open(workdir_target + "/" + fileName_target)
+	openT, err = sftpSession.Open(fullPath_target)
 	if err != nil {
 		log.Println(err)
 	}
@@ -128,12 +130,13 @@ func sftpDownloader(fileName_target string)  {
 		log.Println(err)
 	}
 	if fileStat.IsDir(){
-		return 
+''		return 
 	}
-	fmt.Printf("The file does not exist on your machine : %v\nDownloading ...%v\n", fileName_target , humanize.Bytes(uint64(fileStat.Size())))
-	_, err = os.Stat(fileName_target)
+
+	fmt.Printf("The file does not exist on your machine : %v\nDownloading %v ...\n", fileNameTarget , humanize.Bytes(uint64(fileStat.Size())))
+	_, err = os.Stat(fileNameTarget)
 	if os.IsNotExist(err) {
-		localfile, _ := os.Create(fileName_target)
+		localfile, _ := os.Create(fileNameTarget)
 		_, err = io.Copy(localfile, openT)
 		if err != nil {
 			log.Println(err)
@@ -141,7 +144,7 @@ func sftpDownloader(fileName_target string)  {
 		}
 		localfile.Close()
 		} else {
-			localfile, _ := os.OpenFile(fileName_target, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0777)
+			localfile, _ := os.OpenFile(fileNameTarget, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0777)
 			_, err = io.Copy(localfile, openT)
 			if err != nil {
 				log.Println(err)
@@ -152,9 +155,27 @@ func sftpDownloader(fileName_target string)  {
 		defer openT.Close()
 }
 
+func lsFiles(workdir string) (files []string){
+	sftpSessions , err := sftp.NewClient(client)
+	if err != nil{
+		log.Println(err)
+		return 
+	}
+	defer sftpSessions.Close()
+	_walker := sftpSessions.Walk(workdir)
+
+	for _walker.Step(){
+		if !_walker.Stat().IsDir(){
+			files = append(files, _walker.Path())
+		}
+	}
+	return files
+}
+
 // Run the command on the server
 func Run_Command(command string) (resault string) {
 	//first connect to the server and get the hash of the file
+	
 	session_Scope, err := client.NewSession()
 	if err != nil {
 		log.Println("Failed to dial: ", err)
@@ -166,6 +187,9 @@ func Run_Command(command string) (resault string) {
 		log.Println("Failed to dial: ", err)
 		
 	}
+	
+	
+	
 	return b.String()
 }
 
@@ -223,17 +247,20 @@ func Initailize(addr string) {
 func Connect(destination string, port string, sources [3]string) {
 	ip_ssh = sources[1]
 	user_ssh = sources[0]
-	workdir_target = sources[2]
+	workdir_target := sources[2]
 	workdir_client = destination
-	// print all variable
+
 	Initailize(ip_ssh + ":" + port)
 
-	list := strings.Split((Run_Command("cd " + workdir_target + " && ls -A")), "\n")
-	for _, res := range list {
-		if res == "" {
+	fmt.Println(lsFiles(workdir_target))
+	files := lsFiles(workdir_target)
+	// list := strings.Split((Run_Command("cd " + workdir_target + " && ls -A")), "\n")
+
+	for _, file := range files {
+		if file == "" {
 			continue
 		}
-		GetFile(res)
+		GetFile(file)
 	}
 	defer client.Close()
 	fmt.Println("Finished")
