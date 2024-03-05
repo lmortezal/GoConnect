@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"github.com/dustin/go-humanize"
 	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/term"
@@ -98,7 +99,8 @@ func GetFile(fileName_target string) {
 	list_Dir, _ := os.ReadDir(".")
 	for _, Name_of_File := range list_Dir {
 		if Name_of_File.Name() == fileName_target && !Name_of_File.IsDir() && Chech_hash(Name_of_File.Name(), fileName_target) {
-			fmt.Println("The file is already exist same as the server: ", fileName_target)
+			fileStat , _ := Name_of_File.Info()
+			fmt.Printf("%v already exists on the server.\nsize: %v\n",Name_of_File.Name(),  humanize.Bytes(uint64(fileStat.Size())))
 			return
 		}
 	}
@@ -124,13 +126,11 @@ func sftpDownloader(fileName_target string)  {
 	fileStat , err:= openT.Stat()
 	if err != nil {
 		log.Println(err)
-		loger()
 	}
 	if fileStat.IsDir(){
 		return 
 	}
-	
-	fmt.Printf("The file is not exist in your machine : %v\nDownloading ...", fileName_target)
+	fmt.Printf("The file does not exist on your machine : %v\nDownloading ...%v\n", fileName_target , humanize.Bytes(uint64(fileStat.Size())))
 	_, err = os.Stat(fileName_target)
 	if os.IsNotExist(err) {
 		localfile, _ := os.Create(fileName_target)
@@ -150,7 +150,6 @@ func sftpDownloader(fileName_target string)  {
 			localfile.Close()
 		}
 		defer openT.Close()
-		return 
 }
 
 // Run the command on the server
