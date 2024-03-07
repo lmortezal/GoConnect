@@ -60,11 +60,13 @@ func sftpDownloader(fullPath_target,Path_target string)  {
 	if fileStat.IsDir(){
 		return 
 	}
-
-	fmt.Printf("The file does not exist on your machine : %v\nDownloading %v ...\n", Path_target , humanize.Bytes(uint64(fileStat.Size())))
-	_, err = os.Stat(Path_target)
+	{
+		_ , nameOfFile  := filepath.Split(Path_target)
+		fmt.Printf("The file does not exist on your machine : %v\nDownloading %v ...\n", nameOfFile , humanize.Bytes(uint64(fileStat.Size())))
+	}
+	_, err = os.Stat(workdir_client + Path_target)
 	if os.IsNotExist(err) {
-		localfile, _ := os.Create(Path_target)
+		localfile, _ := os.Create(workdir_client + Path_target)
 		_, err = io.Copy(localfile, openT)
 		if err != nil {
 			log.Println(err)
@@ -72,7 +74,7 @@ func sftpDownloader(fullPath_target,Path_target string)  {
 		}
 		localfile.Close()
 		} else {
-			localfile, _ := os.OpenFile(Path_target, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0777)
+			localfile, _ := os.OpenFile(workdir_client + Path_target, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0777)
 			_, err = io.Copy(localfile, openT)
 			if err != nil {
 				log.Println(err)

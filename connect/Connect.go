@@ -26,8 +26,9 @@ var (
 // Get the password from the user
 func GivePassword() string {
 	GETPASSAGAIN:
-	fmt.Println("Enter your password: ")
+	fmt.Printf("Enter your password:  ")
 	password, err := term.ReadPassword(0)
+	fmt.Println()
 	if err != nil {
 		fmt.Printf("Error to read password\nError:  %v\n", err)
 		goto GETPASSAGAIN
@@ -85,13 +86,12 @@ func lsFiles(workdir string) (files []string){
 	}
 	defer sftpSessions.Close()
 	walkFile := sftpSessions.Walk(workdir)
-
 	for walkFile.Step(){
 		if !walkFile.Stat().IsDir(){
 			files = append(files, walkFile.Path())
 		}else {
 			if _, err := os.Stat(strings.Replace(walkFile.Path(),workdir , "", 1)); os.IsNotExist(err) {
-				os.Mkdir(strings.Replace(walkFile.Path(),workdir , "", 1) , os.ModePerm)
+				os.Mkdir(workdir_client + strings.Replace(walkFile.Path(),workdir , "", 1) , os.ModePerm)
 			}
 		}
 	}
@@ -175,7 +175,6 @@ func Connect(destination string, port string, sources [3]string) {
 
 	Initailize(ip_ssh + ":" + port)
 	files := lsFiles(workdir_target)
-	fmt.Println(files)
 	for _, file := range files {
 		if file == "" {
 			continue
