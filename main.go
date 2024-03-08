@@ -5,6 +5,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
 	"github.com/lmortezal/GoConnect/connect"
 )
 
@@ -14,7 +15,7 @@ func main() {
 		source string
 		port uint
 	)
-	
+
 	dir , _ := os.Getwd()
 	flag.StringVar(&destination, "d", dir , "destination directory (e.g. /home/user/GoConnect )")
 	flag.StringVar(&source, "s", "" , "source directory (e.g. user@golang:/home/target/GoConnect )")
@@ -33,7 +34,7 @@ func main() {
 	sources[2] = strings.Split(source , ":")[1] 
 	sources[1] = strings.Split(strings.Split(source, "@")[1],":")[0]
 
-	connect.Connect(destination , strconv.Itoa(int(port)) , sources)
+	connect.Initailize(destination , strconv.Itoa(int(port)) , sources)
 
 
 }

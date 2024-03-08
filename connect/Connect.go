@@ -9,9 +9,11 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+
 	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/term"
+	// "time"
 )
 
 var (
@@ -42,6 +44,7 @@ func GivePassword() string {
 // check the path 
 func PathFixer(path string) (string, error) {
 	// fix the directory Path
+
 	if strings.HasPrefix(path, ".") {
 		return filepath.Abs(path)
 	} else if !strings.HasPrefix(path, "~") {
@@ -150,7 +153,7 @@ func Check_method_connect(Pkey *bool) *ssh.ClientConfig {
 }
 
 // Initialize the connection and try to connect to the server
-func Initailize(addr string) {
+func sshConnect(addr string) {
 	var Pkey bool = true
 	GETPASS:
 	config := Check_method_connect(&Pkey)
@@ -167,20 +170,31 @@ func Initailize(addr string) {
 
 
 // Start GoConnect from here
-func Connect(destination string, port string, sources [3]string) {
+func Initailize(destination string, port string, sources [3]string) {
 	ip_ssh = sources[1]
 	user_ssh = sources[0]
 	workdir_target := sources[2]
-	workdir_client = destination
-
-	Initailize(ip_ssh + ":" + port)
+	workdir_client, _ = filepath.Abs(destination)
+	sshConnect(ip_ssh + ":" + port)
 	files := lsFiles(workdir_target)
 	for _, file := range files {
 		if file == "" {
 			continue
 		}
-		GetFile(file, workdir_target)
+		synchronizeFiles(file, workdir_target)
 	}
+	
+	// for {
+	// 	files := lsFiles(workdir_target)
+	// 	for _, file := range files {
+	// 		if file == "" {
+	// 			continue
+	// 		}
+	// 		GetFile(file, workdir_target)
+	// 	}
+	// 	time.Sleep(5 * time.Second)
+	// }
+
 	defer client.Close()
 	fmt.Println("Finished")
 }

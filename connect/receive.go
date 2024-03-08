@@ -13,7 +13,7 @@ import (
 )
 
 // Get the file from the server with Check_hash
-func GetFile(fullPath,workdir_target string) {
+func synchronizeFiles(fullPath,workdir_target string) {
 	var targetFile string = strings.Split(fullPath , "/")[len(strings.Split(fullPath , "/")) - 1:][0]
 	
 	var list_Dir2 []string
@@ -29,10 +29,13 @@ func GetFile(fullPath,workdir_target string) {
 		_ , fN := filepath.Split(fullpathClient)
 		oSFs , _ := os.Stat(fullpathClient)
 		if fN == targetFile && !oSFs.IsDir() && Check_hash(fullpathClient, fullPath) {
+			fmt.Println("fullPath: ", fullPath)
+			fmt.Println("fullpathClient: ", fullpathClient)
 			fmt.Printf("%v already exists on the server.\nsize: %v\n",fN,  humanize.Bytes(uint64(oSFs.Size())))
 			return
 		}
 	}
+	//return
 	sftpDownloader(fullPath , strings.Replace(fullPath , workdir_target , "", 1))
 }
 
@@ -60,10 +63,12 @@ func sftpDownloader(fullPath_target,Path_target string)  {
 	if fileStat.IsDir(){
 		return 
 	}
+	
 	{
 		_ , nameOfFile  := filepath.Split(Path_target)
 		fmt.Printf("The file does not exist on your machine : %v\nDownloading %v ...\n", nameOfFile , humanize.Bytes(uint64(fileStat.Size())))
 	}
+
 	_, err = os.Stat(workdir_client + Path_target)
 	if os.IsNotExist(err) {
 		localfile, _ := os.Create(workdir_client + Path_target)
