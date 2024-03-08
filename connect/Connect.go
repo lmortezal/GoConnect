@@ -9,10 +9,11 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"syscall"
 
 	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
-	"golang.org/x/term"
+	"golang.org/x/crypto/ssh/terminal"
 	// "time"
 )
 
@@ -29,7 +30,7 @@ var (
 func GivePassword() string {
 	GETPASSAGAIN:
 	fmt.Printf("Enter your password:  ")
-	password, err := term.ReadPassword(0)
+	password, err := terminal.ReadPassword(int(syscall.Stdin))
 	fmt.Println()
 	if err != nil {
 		fmt.Printf("Error to read password\nError:  %v\n", err)
@@ -170,6 +171,9 @@ func sshConnect(addr string) {
 
 
 // Start GoConnect from here
+// source : user@ip:port
+// destination : the path of the directory
+// port : the port of the ssh
 func Initailize(destination string, port string, sources [3]string) {
 	ip_ssh = sources[1]
 	user_ssh = sources[0]
