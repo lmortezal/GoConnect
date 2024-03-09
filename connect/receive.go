@@ -24,7 +24,6 @@ func synchronizeFiles(fullPath,workdir_target string) {
 		return nil
 	})
 
-	// list_Dir, _ := os.ReadDir(".")
 	for _ , fullpathClient := range list_Dir2 {
 		_ , fN := filepath.Split(fullpathClient)
 		oSFs , _ := os.Stat(fullpathClient)
@@ -33,11 +32,32 @@ func synchronizeFiles(fullPath,workdir_target string) {
 			fmt.Println("fullpathClient: ", fullpathClient)
 			fmt.Printf("%v already exists on the server.\nsize: %v\n",fN,  humanize.Bytes(uint64(oSFs.Size())))
 			return
-		}
+		} //else if os.IsExist(fullpathClient) && 
+		// if file does not exist on the server try to delete it from the client
+		// im should be check the file is about to be deleted or not
 	}
-	//return
+	fmt.Println("fullPath: ", fullPath + "  workdir_target: " + strings.Replace(fullPath , workdir_target , "", 1))
 	sftpDownloader(fullPath , strings.Replace(fullPath , workdir_target , "", 1))
 }
+
+func IsExist(path string) bool{
+	sftpSession, err := sftp.NewClient(client)
+	if err != nil {
+		log.Println(err)
+	}
+	defer sftpSession.Close()
+	_ , err = sftpSession.Stat(path)
+	if err != nil {
+		log.Println(err)
+		if os.IsNotExist(err){
+			return false
+		}
+	}
+	return true
+
+	
+}
+
 
 // Download the file from the server
 func sftpDownloader(fullPath_target,Path_target string)  {

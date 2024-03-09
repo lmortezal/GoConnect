@@ -81,7 +81,8 @@ func GetPrivateKey() string {
 	return ""
 }
 
-
+// Get list of the files in the directory (server)
+// plus create the directory if it does not exist
 func lsFiles(workdir string) (files []string){
 	sftpSessions , err := sftp.NewClient(client)
 	if err != nil{
