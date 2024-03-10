@@ -84,6 +84,17 @@ func GetPrivateKey() string {
 // Get list of the files in the directory (server)
 // plus create the directory if it does not exist
 func lsFiles(workdir string) (files []string){
+	_,DirName := filepath.Split(workdir_client)
+	_ , err := os.Stat(workdir_client)
+	if err != nil{
+		log.Printf("I cant create %v Dir or the Dir is already exist : %v\n",DirName, err) 
+		os.Mkdir(workdir_client , os.ModePerm)
+	}
+	GoDir , _ := os.Stat(workdir_client)
+	if !GoDir.IsDir(){
+		log.Printf("%v is not a directory\nPlz remove it and run again", workdir_client)
+		return
+	}
 	sftpSessions , err := sftp.NewClient(client)
 	if err != nil{
 		log.Println(err)
@@ -180,7 +191,9 @@ func Initailize(destination string, port string, sources [3]string) {
 	user_ssh = sources[0]
 	workdir_target := sources[2]
 	workdir_client, _ = filepath.Abs(destination)
+	workdir_client = filepath.Join(workdir_client , "/" , "GoConnect_" + ip_ssh )
 	sshConnect(ip_ssh + ":" + port)
+
 	files := lsFiles(workdir_target)
 	for _, file := range files {
 		if file == "" {
