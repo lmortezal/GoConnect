@@ -10,8 +10,7 @@ import (
 	"runtime"
 	"strings"
 	"syscall"
-
-	"github.com/pkg/sftp"
+	"golang.org/x/crypto/ssh/knownhosts"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/terminal"
 	// "time"
@@ -70,7 +69,7 @@ func loger() {
 
 // Get the private key from the ssh directory
 func GetPrivateKey() string {
-	var keyArray []string = []string{"id_rsa", "id_ecdsa", "id_ecdsa_sk", "id_ed25519", "id_ed25519_sk", "id_dsa", "id_xmss"}
+	var keyArray []string = []string{"id_rsa2", "id_ecdsa", "id_ecdsa_sk", "id_ed25519", "id_ed25519_sk", "id_dsa", "id_xmss"}
 	for _, key := range keyArray {
 		FullAddress, _ := PathFixer("~/.ssh/" + key)
 		if _, err := os.ReadFile(FullAddress); err == nil {
@@ -81,38 +80,7 @@ func GetPrivateKey() string {
 	return ""
 }
 
-// Get list of the files in the directory (server)
-// plus create the directory if it does not exist
-func lsFiles(workdir string) (files []string){
-	_,DirName := filepath.Split(workdir_client)
-	_ , err := os.Stat(workdir_client)
-	if err != nil{
-		log.Printf("I cant create %v Dir or the Dir is already exist : %v\n",DirName, err) 
-		os.Mkdir(workdir_client , os.ModePerm)
-	}
-	GoDir , _ := os.Stat(workdir_client)
-	if !GoDir.IsDir(){
-		log.Printf("%v is not a directory\nPlz remove it and run again", workdir_client)
-		return
-	}
-	sftpSessions , err := sftp.NewClient(client)
-	if err != nil{
-		log.Println(err)
-		return 
-	}
-	defer sftpSessions.Close()
-	walkFile := sftpSessions.Walk(workdir)
-	for walkFile.Step(){
-		if !walkFile.Stat().IsDir(){
-			files = append(files, walkFile.Path())
-		}else {
-			if _, err := os.Stat(strings.Replace(walkFile.Path(),workdir , "", 1)); os.IsNotExist(err) {
-				os.Mkdir(workdir_client + strings.Replace(walkFile.Path(),workdir , "", 1) , os.ModePerm)
-			}
-		}
-	}
-	return files
-}
+
 
 // Run the command on the server
 func Run_Command(command string) (resault string) {
@@ -134,6 +102,15 @@ func Run_Command(command string) (resault string) {
 
 // Check the authentication method and return the config
 func Check_method_connect(Pkey *bool) *ssh.ClientConfig {
+	var HostKeyCallB ssh.HostKeyCallback
+
+	knownhostAddress, _ := PathFixer("~/.ssh/known_hosts")
+	HostKeyCallB , err := knownhosts.New(knownhostAddress)
+	if err != nil {
+		log.Println(err)
+		
+	}
+
 	// TODO : fix authentication check
 	Paddress, _ := PathFixer(GetPrivateKey())
 	key, err := os.ReadFile(Paddress)
@@ -151,7 +128,8 @@ func Check_method_connect(Pkey *bool) *ssh.ClientConfig {
 			Auth: []ssh.AuthMethod{
 				ssh.Password(Password),
 			},
-			HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+			// HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+			HostKeyCallback: HostKeyCallB,
 		}
 		return config
 	}
@@ -160,7 +138,7 @@ func Check_method_connect(Pkey *bool) *ssh.ClientConfig {
 		Auth: []ssh.AuthMethod{
 			ssh.PublicKeys(singer),
 		},
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(), // Only use this if you're sure about the server's identity
+		HostKeyCallback: HostKeyCallB, // Only use this if you're sure about the server's identity
 	}
 	return config
 }
@@ -193,15 +171,27 @@ func Initailize(destination string, port string, sources [3]string) {
 	workdir_client, _ = filepath.Abs(destination)
 	workdir_client = filepath.Join(workdir_client , "/" , "GoConnect_" + ip_ssh )
 	sshConnect(ip_ssh + ":" + port)
+	var fileDownloaded = make([]string,0)
 
-	files := lsFiles(workdir_target)
-	for _, file := range files {
+
+	files_server := lsFiles_server(workdir_target)
+	for _, file := range files_server {
 		if file == "" {
 			continue
 		}
-		synchronizeFiles(file, workdir_target)
+		if synchronizeFiles(file, workdir_target){
+			fileDownloaded = append(fileDownloaded, file)
+		}
 	}
-	
+	// files_client := lsFiles_client()
+	// for _, file := range files_client {
+	// 	if file == "" {
+	// 		continue
+	// 	}
+	// 	sftpUploader(file, workdir_target,fileDownloaded)
+	// }
+
+
 	// for {
 	// 	files := lsFiles(workdir_target)
 	// 	for _, file := range files {
