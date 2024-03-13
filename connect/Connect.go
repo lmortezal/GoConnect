@@ -10,9 +10,10 @@ import (
 	"runtime"
 	"strings"
 	"syscall"
-	"golang.org/x/crypto/ssh/knownhosts"
+
 	"golang.org/x/crypto/ssh"
-	"golang.org/x/crypto/ssh/terminal"
+	"golang.org/x/crypto/ssh/knownhosts"
+	"golang.org/x/term"
 	// "time"
 )
 
@@ -24,13 +25,11 @@ var (
 	err            error
 	// protect the password and save it in a file
 )
-
 // Get the password from the user
 func GivePassword() string {
 	GETPASSAGAIN:
-	fmt.Printf("Enter your password:  ")
-	password, err := terminal.ReadPassword(int(syscall.Stdin))
-	fmt.Println()
+	fmt.Printf("Enter your password:\n")
+	password , err := term.ReadPassword(int(syscall.Stdin))
 	if err != nil {
 		fmt.Printf("Error to read password\nError:  %v\n", err)
 		goto GETPASSAGAIN
@@ -69,7 +68,7 @@ func loger() {
 
 // Get the private key from the ssh directory
 func GetPrivateKey() string {
-	var keyArray []string = []string{"id_rsa2", "id_ecdsa", "id_ecdsa_sk", "id_ed25519", "id_ed25519_sk", "id_dsa", "id_xmss"}
+	var keyArray []string = []string{"id_rsa", "id_ecdsa", "id_ecdsa_sk", "id_ed25519", "id_ed25519_sk", "id_dsa", "id_xmss"}
 	for _, key := range keyArray {
 		FullAddress, _ := PathFixer("~/.ssh/" + key)
 		if _, err := os.ReadFile(FullAddress); err == nil {
@@ -174,15 +173,25 @@ func Initailize(destination string, port string, sources [3]string) {
 	var fileDownloaded = make([]string,0)
 
 
-	files_server := lsFiles_server(workdir_target)
+	files_server := lsFiles_server(workdir_target , true)
 	for _, file := range files_server {
 		if file == "" {
 			continue
 		}
-		if synchronizeFiles(file, workdir_target){
+		if download(file, workdir_target){
 			fileDownloaded = append(fileDownloaded, file)
 		}
 	}
+	files_client := lsFiles_client(workdir_target , true)
+	for _ , file := range files_client{
+		if file ==  ""{
+			continue
+		}
+		// TODO check downloaded file
+		upload(file , workdir_target)
+
+	}
+
 	// files_client := lsFiles_client()
 	// for _, file := range files_client {
 	// 	if file == "" {

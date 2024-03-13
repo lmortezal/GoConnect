@@ -12,16 +12,38 @@ import (
 	"github.com/pkg/sftp"
 )
 
-// Get the file from the server with Check_hash
-func synchronizeFiles(fullPath, workdir_target string) bool {
-	var targetFile string = strings.Split(fullPath, "/")[len(strings.Split(fullPath, "/"))-1:][0]
+func upload(pathClient, pathServer string) bool {
+	lsfilesServer := lsFiles_server(pathServer , false)
+	sftpsession , _ := sftp.NewClient(client)
+	defer sftpsession.Close()
+	_ , fn := filepath.Split(pathClient)
+	for _ , file := range lsfilesServer{
+		openT,_ := sftpsession.Stat(file)	
+		_ , targetFile := filepath.Split(file)	
+		oSFs, _ := os.Stat(pathClient)
+		if  fn == targetFile && !openT.IsDir() && Check_hash(pathClient , file) {
+			fmt.Printf("%v already exists on the server.\nsize: %v\n", fn, humanize.Bytes(uint64(oSFs.Size())))
+			return false
+		}
 
-	list_Dir := lsFiles_client()
-	for _, fullpathClient := range list_Dir {
-		_, fN := filepath.Split(fullpathClient)
+	}
+	fmt.Println("download nashode : " , pathClient)
+	return true
+}
+
+// Get the file from the server with Check_hash
+func download(fullPath, workdir_target string) bool {
+	// var targetFile string = strings.Split(fullPath, "/")[len(strings.Split(fullPath, "/"))-1:][0]
+	_ , targetFile := filepath.Split(fullPath)
+	fmt.Println(targetFile)
+	fmt.Println(fullPath)
+	fmt.Println("-----------")
+	list_Dir := lsFiles_client(nil , false)
+	for _ , fullpathClient := range list_Dir {
+		_ , fN := filepath.Split(fullpathClient)
 		oSFs, _ := os.Stat(fullpathClient)
 		if fN == targetFile && !oSFs.IsDir() && Check_hash(fullpathClient, fullPath) {
-			fmt.Printf("%v already exists on the server.\nsize: %v\n", fN, humanize.Bytes(uint64(oSFs.Size())))
+			fmt.Printf("%v already exists on the client.\nsize: %v\n", fN, humanize.Bytes(uint64(oSFs.Size())))
 			return false
 		}
 	}
@@ -30,30 +52,35 @@ func synchronizeFiles(fullPath, workdir_target string) bool {
 }
 
 
-func IsExist(path string) bool {
-	sftpSession, err := sftp.NewClient(client)
-	if err != nil {
-		log.Println(err)
-	}
-	defer sftpSession.Close()
-	_, err = sftpSession.Stat(path)
-	if err != nil {
-		log.Println(err)
-		if os.IsNotExist(err) {
-			return false
-		}
-	}
-	return true
-
-}
 
 
-// Get list of the files in the directory (client)
-func lsFiles_client() []string{
+
+// Get list of the files name in the directory (client)
+func lsFiles_client(workdir any , Cdir bool) []string{
 	var list_Dir []string
+	var workdirS string
+	switch workdir.(type) {
+		case string:
+			workdirS = workdir.(string)
+		case nil:
+			return nil
+		default:
+			return nil
+	}
+	sftpsession , _ := sftp.NewClient(client)
+	_ = sftpsession
 	filepath.Walk(workdir_client, func(path string, info os.FileInfo, err error) error {
 		if !info.IsDir() || info.Name()[0] == '.' {
 			list_Dir = append(list_Dir, path)
+		}else {
+			if Cdir{
+				// sftpsession.Mkdir()
+				sftpsession.Mkdir(filepath.ToSlash(filepath.Join(workdirS , strings.Replace(path, workdir_client, "", 1))))
+				fmt.Println(filepath.ToSlash(filepath.Join(workdirS , strings.Replace(path, workdir_client, "", 1))))
+				fmt.Println("path : " , path)
+				fmt.Println("workdir_client : " , workdir_client)
+
+			}
 		}
 		return nil
 	})
@@ -61,9 +88,9 @@ func lsFiles_client() []string{
 }
 
 
-// Get list of the files in the directory (server)
+// Get list of the files name in the directory (server)
 // plus create the directory if it does not exist
-func lsFiles_server(workdir string) (files []string) {
+func lsFiles_server(workdir string , Cdir bool) (files []string) {
 	_, DirName := filepath.Split(workdir_client)
 	_, err := os.Stat(workdir_client)
 	if err != nil {
@@ -81,16 +108,18 @@ func lsFiles_server(workdir string) (files []string) {
 		return
 	}
 	defer sftpSessions.Close()
+	
 	walkFile := sftpSessions.Walk(workdir)
 	for walkFile.Step() {
 		if !walkFile.Stat().IsDir() {
 			files = append(files, walkFile.Path())
 		} else {
-			if _, err := os.Stat(strings.Replace(walkFile.Path(), workdir, "", 1)); os.IsNotExist(err) {
+			if _, err := os.Stat(strings.Replace(walkFile.Path(), workdir, "", 1)); os.IsNotExist(err)  && Cdir {
 				os.Mkdir(workdir_client+strings.Replace(walkFile.Path(), workdir, "", 1), os.ModePerm)
 			}
 		}
 	}
+
 	return files
 }
 
