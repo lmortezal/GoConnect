@@ -21,6 +21,7 @@ var (
 	ip_ssh         string
 	user_ssh       string
 	workdir_client string
+	workdir_target string
 	client         *ssh.Client
 	err            error
 	// protect the password and save it in a file
@@ -166,22 +167,22 @@ func sshConnect(addr string) {
 func Initailize(destination string, port string, sources [3]string) {
 	ip_ssh = sources[1]
 	user_ssh = sources[0]
-	workdir_target := sources[2]
+	workdir_target = sources[2]
 	workdir_client, _ = filepath.Abs(destination)
 	workdir_client = filepath.Join(workdir_client , "/" , "GoConnect_" + ip_ssh )
 	sshConnect(ip_ssh + ":" + port)
-	var fileDownloaded = make([]string,0)
-
-
-	files_server := lsFiles_server(workdir_target , true)
-	for _, file := range files_server {
-		if file == "" {
-			continue
-		}
-		if download(file, workdir_target){
-			fileDownloaded = append(fileDownloaded, file)
-		}
-	}
+	
+	
+	// var fileDownloaded = make([]string,0)
+	// files_server := lsFiles_server(workdir_target , true)
+	// for _, file := range files_server {
+	// 	if file == "" {
+	// 		continue
+	// 	}
+	// 	if download(file, workdir_target){
+	// 		fileDownloaded = append(fileDownloaded, file)
+	// 	}
+	// }
 	files_client := lsFiles_client(workdir_target , true)
 	for _ , file := range files_client{
 		if file ==  ""{

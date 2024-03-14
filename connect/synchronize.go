@@ -27,7 +27,7 @@ func upload(pathClient, pathServer string) bool {
 		}
 
 	}
-	fmt.Println("download nashode : " , pathClient)
+	sftpUploader(pathClient , strings.Replace(pathClient, workdir_client, "", 1))
 	return true
 }
 
@@ -35,10 +35,7 @@ func upload(pathClient, pathServer string) bool {
 func download(fullPath, workdir_target string) bool {
 	// var targetFile string = strings.Split(fullPath, "/")[len(strings.Split(fullPath, "/"))-1:][0]
 	_ , targetFile := filepath.Split(fullPath)
-	fmt.Println(targetFile)
-	fmt.Println(fullPath)
-	fmt.Println("-----------")
-	list_Dir := lsFiles_client(nil , false)
+	list_Dir := lsFiles_client("" , false)
 	for _ , fullpathClient := range list_Dir {
 		_ , fN := filepath.Split(fullpathClient)
 		oSFs, _ := os.Stat(fullpathClient)
@@ -56,8 +53,7 @@ func download(fullPath, workdir_target string) bool {
 
 
 // Get list of the files name in the directory (client)
-func lsFiles_client(workdir any , Cdir bool) []string{
-	var list_Dir []string
+func lsFiles_client(workdir any , Cdir bool) (files []string){
 	var workdirS string
 	switch workdir.(type) {
 		case string:
@@ -71,20 +67,17 @@ func lsFiles_client(workdir any , Cdir bool) []string{
 	_ = sftpsession
 	filepath.Walk(workdir_client, func(path string, info os.FileInfo, err error) error {
 		if !info.IsDir() || info.Name()[0] == '.' {
-			list_Dir = append(list_Dir, path)
+			files = append(files, path)
 		}else {
 			if Cdir{
-				// sftpsession.Mkdir()
 				sftpsession.Mkdir(filepath.ToSlash(filepath.Join(workdirS , strings.Replace(path, workdir_client, "", 1))))
-				fmt.Println(filepath.ToSlash(filepath.Join(workdirS , strings.Replace(path, workdir_client, "", 1))))
-				fmt.Println("path : " , path)
-				fmt.Println("workdir_client : " , workdir_client)
-
+				// fmt.Println(filepath.ToSlash(filepath.Join(workdirS , strings.Replace(path, workdir_client, "", 1))))
+				// FIX PATH
 			}
 		}
 		return nil
 	})
-	return list_Dir
+	return files
 }
 
 
@@ -119,7 +112,6 @@ func lsFiles_server(workdir string , Cdir bool) (files []string) {
 			}
 		}
 	}
-
 	return files
 }
 
@@ -173,14 +165,14 @@ func sftpDownloader(fullPath_target, Path_target string)  {
 	}
 }
 
-func sftpUploader(file string , workdir_target string , filedownloaded []string ){
+func sftpUploader(fullpathTarget string , pathTarget string  ){
 	// list_dir_target := lsFiles_server(workdir_target)
 	sftpSesstion , err := sftp.NewClient(client)
 	if err != nil {
 		log.Println(err)
 	}
 	defer sftpSesstion.Close()
-	OpenC , err := os.Open(file)
+	OpenC , err := os.Open(fullpathTarget)
 	if err != nil {
 		log.Println(err)
 	}
@@ -189,27 +181,21 @@ func sftpUploader(file string , workdir_target string , filedownloaded []string 
 	if fileStat.IsDir() {
 		return
 	}
-	for _, fileDownloaded := range filedownloaded {
-		if file == fileDownloaded {
-			return
-		}
+	{
+		_, nameOfFile := filepath.Split(fullpathTarget)
+		fmt.Printf("The file does not exist on your server : %v\nUploading %v ...\n", nameOfFile, humanize.Bytes(uint64(fileStat.Size())))
 	}
-	_, err = sftpSesstion.Stat(workdir_target + filepath.SplitList(file)[len(filepath.SplitList(file)) - 1])	
+	// FIX ToSlash
+	_ , err = sftpSesstion.Stat(filepath.ToSlash(filepath.Join(workdir_target , pathTarget)))
+	if	err != nil{
+		sftpSesstion.Create(filepath.ToSlash(filepath.Join(workdir_target , pathTarget)))
+	}
+	serverfile , _ := sftpSesstion.OpenFile(filepath.ToSlash(filepath.Join(workdir_target , pathTarget)) , os.O_RDWR|os.O_CREATE|os.O_TRUNC)
+	_ , err = io.Copy(serverfile , OpenC)
 	if err != nil {
-		// log.Println(err)
-		// log.Println("The file does not exist on the server")
-		// log.Println("Uploading ...")
-		var remoteFile *sftp.File
-		remoteFile , err = sftpSesstion.Create(workdir_target + filepath.SplitList(file)[len(filepath.SplitList(file)) - 1])
-		if err != nil {
-			log.Println(err)
-		}
-		_, err = io.Copy(remoteFile , OpenC)
-		if err != nil {
-			log.Println(err)
-		}
-		remoteFile.Close()
+		log.Println(err)
+		return
 	}
-
-
+	defer serverfile.Close()
+	
 }
