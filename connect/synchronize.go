@@ -3,6 +3,7 @@ package connect
 import (
 	"fmt"
 	"io"
+	"io/fs"
 	"log"
 	"os"
 	"path/filepath"
@@ -44,6 +45,7 @@ func download(fullPath, workdir_target string) bool {
 			return false
 		}
 	}
+	loger()
 	sftpDownloader(fullPath, strings.Replace(fullPath, workdir_target, "", 1))
 	return true
 }
@@ -64,7 +66,7 @@ func lsFiles_client(workdir any , Cdir bool) (files []string){
 			return nil
 	}
 	sftpsession , _ := sftp.NewClient(client)
-	_ = sftpsession
+	defer sftpsession.Close()
 	filepath.Walk(workdir_client, func(path string, info os.FileInfo, err error) error {
 		if !info.IsDir() || info.Name()[0] == '.' {
 			files = append(files, path)
@@ -132,37 +134,31 @@ func sftpDownloader(fullPath_target, Path_target string)  {
 	defer openT.Close()
 
 	// if filename is directory
-	fileStat, err := openT.Stat()
+	fileStatS, err := openT.Stat()
 	if err != nil {
 		log.Println(err)
 	}
-	if fileStat.IsDir() {
+	if fileStatS.IsDir() {
 		return
 	}
+	_, nameOfFile := filepath.Split(Path_target)
 
-	{
-		_, nameOfFile := filepath.Split(Path_target)
-		fmt.Printf("The file does not exist on your machine : %v\nDownloading %v ...\n", nameOfFile, humanize.Bytes(uint64(fileStat.Size())))
-	}
-
-	_, err = os.Stat(workdir_client + Path_target)
+	fileStatC, err := os.Stat(workdir_client + Path_target)
 	if os.IsNotExist(err) {
-		localfile, _ := os.Create(workdir_client + Path_target)
-		_, err = io.Copy(localfile, openT)
-		if err != nil {
-			log.Println(err)
-			return
-		}
-		localfile.Close()
-	} else {
-		localfile, _ := os.OpenFile(workdir_client+Path_target, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0777)
-		_, err = io.Copy(localfile, openT)
-		if err != nil {
-			log.Println(err)
-			return
-		}
-		localfile.Close()
+		os.Create(workdir_client + Path_target)
 	}
+	if !timeCheck(fileStatC, fileStatS) {
+		return
+	}
+	localfile, _ := os.OpenFile(workdir_client+Path_target, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0777)
+	transmissionLog(nameOfFile, fileStatS.Size(),"Downloading")
+	_, err = io.Copy(localfile, openT)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	localfile.Close()
+	
 }
 
 func sftpUploader(fullpathTarget string , pathTarget string  ){
@@ -177,20 +173,24 @@ func sftpUploader(fullpathTarget string , pathTarget string  ){
 		log.Println(err)
 	}
 	defer OpenC.Close()
-	fileStat , _ := OpenC.Stat()
-	if fileStat.IsDir() {
+	fileStatC , _ := OpenC.Stat()
+	if fileStatC.IsDir() {
 		return
 	}
-	{
-		_, nameOfFile := filepath.Split(fullpathTarget)
-		fmt.Printf("The file does not exist on your server : %v\nUploading %v ...\n", nameOfFile, humanize.Bytes(uint64(fileStat.Size())))
-	}
+
+	_, nameOfFile := filepath.Split(fullpathTarget)
+
+
 	// FIX ToSlash
-	_ , err = sftpSesstion.Stat(filepath.ToSlash(filepath.Join(workdir_target , pathTarget)))
-	if	err != nil{
+	fileStatS , err := sftpSesstion.Stat(filepath.ToSlash(filepath.Join(workdir_target , pathTarget)))
+	if	os.IsNotExist(err) {
+		if timeCheck(fileStatC , fileStatS){
+			return
+		}
 		sftpSesstion.Create(filepath.ToSlash(filepath.Join(workdir_target , pathTarget)))
 	}
 	serverfile , _ := sftpSesstion.OpenFile(filepath.ToSlash(filepath.Join(workdir_target , pathTarget)) , os.O_RDWR|os.O_CREATE|os.O_TRUNC)
+	transmissionLog(nameOfFile, fileStatC.Size(), "Uploading")
 	_ , err = io.Copy(serverfile , OpenC)
 	if err != nil {
 		log.Println(err)
@@ -198,4 +198,20 @@ func sftpUploader(fullpathTarget string , pathTarget string  ){
 	}
 	defer serverfile.Close()
 	
+}
+
+
+// check the file in server newer than client or not
+func timeCheck(client,server fs.FileInfo) (res bool){
+	if client.ModTime().After(server.ModTime()){
+		return false
+	}else if client.ModTime().Equal(server.ModTime()){
+		log.Println("Something went wrong with the file")
+		return false
+	}
+	return true
+}
+
+func transmissionLog(name string , size int64 ,status string){
+	log.Printf("The file does not exist on your machine : %v\n%v %v ...\n", name, status ,humanize.Bytes(uint64(size)))
 }

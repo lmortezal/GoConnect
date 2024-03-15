@@ -173,16 +173,16 @@ func Initailize(destination string, port string, sources [3]string) {
 	sshConnect(ip_ssh + ":" + port)
 	
 	
-	// var fileDownloaded = make([]string,0)
-	// files_server := lsFiles_server(workdir_target , true)
-	// for _, file := range files_server {
-	// 	if file == "" {
-	// 		continue
-	// 	}
-	// 	if download(file, workdir_target){
-	// 		fileDownloaded = append(fileDownloaded, file)
-	// 	}
-	// }
+	var fileDownloaded = make([]string,0)
+	files_server := lsFiles_server(workdir_target , true)
+	for _, file := range files_server {
+		if file == "" {
+			continue
+		}
+		if download(file, workdir_target){
+			fileDownloaded = append(fileDownloaded, file)
+		}
+	}
 	files_client := lsFiles_client(workdir_target , true)
 	for _ , file := range files_client{
 		if file ==  ""{
