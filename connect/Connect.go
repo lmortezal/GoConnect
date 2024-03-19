@@ -10,9 +10,10 @@ import (
 	"runtime"
 	"strings"
 	"syscall"
+	"time"
 
 	"golang.org/x/crypto/ssh"
-	"golang.org/x/crypto/ssh/knownhosts"
+	_ "golang.org/x/crypto/ssh/knownhosts"
 	"golang.org/x/term"
 	// "time"
 )
@@ -102,10 +103,10 @@ func Run_Command(command string) (resault string) {
 
 // Check the authentication method and return the config
 func Check_method_connect(Pkey *bool) *ssh.ClientConfig {
-	var HostKeyCallB ssh.HostKeyCallback
+	// var HostKeyCallB ssh.HostKeyCallback
 
-	knownhostAddress, _ := PathFixer("~/.ssh/known_hosts")
-	HostKeyCallB , err := knownhosts.New(knownhostAddress)
+	// knownhostAddress, _ := PathFixer("~/.ssh/known_hosts")
+	// HostKeyCallB , err := knownhosts.New(knownhostAddress)
 	if err != nil {
 		log.Println(err)
 		
@@ -128,8 +129,8 @@ func Check_method_connect(Pkey *bool) *ssh.ClientConfig {
 			Auth: []ssh.AuthMethod{
 				ssh.Password(Password),
 			},
-			// HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-			HostKeyCallback: HostKeyCallB,
+			HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+			// HostKeyCallback: HostKeyCallB,
 		}
 		return config
 	}
@@ -138,7 +139,8 @@ func Check_method_connect(Pkey *bool) *ssh.ClientConfig {
 		Auth: []ssh.AuthMethod{
 			ssh.PublicKeys(singer),
 		},
-		HostKeyCallback: HostKeyCallB, // Only use this if you're sure about the server's identity
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		// HostKeyCallback: HostKeyCallB, // Only use this if you're sure about the server's identity
 	}
 	return config
 }
@@ -171,26 +173,25 @@ func Initailize(destination string, port string, sources [3]string) {
 	workdir_client, _ = filepath.Abs(destination)
 	workdir_client = filepath.Join(workdir_client , "/" , "GoConnect_" + ip_ssh )
 	sshConnect(ip_ssh + ":" + port)
+	for{
+		files_server := lsFiles_server(workdir_target , true)
+		for _, file := range files_server {
+			if file == "" {
+				continue
+			}
+			download(file, workdir_target)
+		}
+		<-time.After(500 * time.Millisecond)
+		files_client := lsFiles_client(workdir_target , true)
+		for _ , file := range files_client{
+			if file ==  ""{
+				continue
+			}
+			// TODO check downloaded file
+			upload(file , workdir_target)
 	
-	
-	var fileDownloaded = make([]string,0)
-	files_server := lsFiles_server(workdir_target , true)
-	for _, file := range files_server {
-		if file == "" {
-			continue
 		}
-		if download(file, workdir_target){
-			fileDownloaded = append(fileDownloaded, file)
-		}
-	}
-	files_client := lsFiles_client(workdir_target , true)
-	for _ , file := range files_client{
-		if file ==  ""{
-			continue
-		}
-		// TODO check downloaded file
-		upload(file , workdir_target)
-
+		<-time.After(500 * time.Millisecond)
 	}
 
 	// files_client := lsFiles_client()

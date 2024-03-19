@@ -13,7 +13,7 @@ import (
 	"github.com/pkg/sftp"
 )
 
-func upload(pathClient, pathServer string) bool {
+func upload(pathClient, pathServer string)  {
 	lsfilesServer := lsFiles_server(pathServer , false)
 	sftpsession , _ := sftp.NewClient(client)
 	defer sftpsession.Close()
@@ -24,12 +24,13 @@ func upload(pathClient, pathServer string) bool {
 		oSFs, _ := os.Stat(pathClient)
 		if  fn == targetFile && !openT.IsDir() && Check_hash(pathClient , file) {
 			fmt.Printf("%v already exists on the server.\nsize: %v\n", fn, humanize.Bytes(uint64(oSFs.Size())))
-			return false
+			return 
 		}
 
 	}
+	loger()
 	sftpUploader(pathClient , strings.Replace(pathClient, workdir_client, "", 1))
-	return true
+	loger()
 }
 
 // Get the file from the server with Check_hash
@@ -203,6 +204,15 @@ func sftpUploader(fullpathTarget string , pathTarget string  ){
 
 // check the file in server newer than client or not
 func timeCheck(client,server fs.FileInfo) (res bool){
+	if client == nil{
+		return true
+	}else if server == nil {
+		return false
+	}
+	// }else{
+	// 	fmt.Println("client ", client , "server " , server)
+	// 	panic(">>>>>>>>>")
+	// }
 	if client.ModTime().After(server.ModTime()){
 		return false
 	}else if client.ModTime().Equal(server.ModTime()){

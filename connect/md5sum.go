@@ -25,6 +25,10 @@ func Md5sum(FilePath string) string{
 
 // Get the hash of the file
 func Check_hash(FullPath_client, fullPath_target string) bool {
+	fmt.Println(fullPath_target)
+	fmt.Println("---------------")
+	fmt.Println(FullPath_client)
+	
 	// check the hash of the file
 	// from server check the hash of the file
 	md5_target := Run_Command("md5sum " + fullPath_target)
